@@ -1,0 +1,173 @@
+---
+title: "Case Study - Cyclistic"
+author: "Bryce D"
+date: "2022-09-27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Case Study: How does a Bike-Share Navigate Speedy Success?
+
+## Scenario & Introduction
+I am a junior data analyst working for a fictional company called "Cyclistic". Launched in 2016, Cyclistic is a Chicago-based bike-share service, with an offering of over 5,824 bicycles. The bikes are geotracked and locked into a network of 692 stations. Bikes taken out at one station can be returned at any other station in the system at any time. There are three options for payment:
+
+ * Single-ride passes
+ * Full-day passes
+ * Annual membership
+
+## Ask and the Buisness Task
+I am tasked with looking into how casual members use the service different then annual members. This information will assist marketing Lily Moreno to develop a plan to turn casual riders into annual members and help influence digital media campaigns. 
+
+## Preparing Anaylsis
+To help process the data and review the material I will enable *"tidyverse"* and *"arsenal"*.
+```{r loading packages}
+library(tidyverse)
+library(arsenal)
+```
+We have been tasked with reviewing the twelve months of data. The data supplied is considered Internal data as it is primary data collected from our own internal means (historical use). There doesn't appear to be any credibility issue with this data, due to the nature of the source. The process of cleaning my data for analysis will be recorded throughout this project.   
+
+```{r Loading Data, message=FALSE}
+# Importing the last 12 months of data
+Cyclistic_202108_data <- read_csv("CS_2020_2021_data/202108-divvy-tripdata.csv")
+Cyclistic_202109_data <- read_csv("CS_2020_2021_data/202109-divvy-tripdata.csv")
+Cyclistic_202110_data <- read_csv("CS_2020_2021_data/202110-divvy-tripdata.csv")
+Cyclistic_202111_data <- read_csv("CS_2020_2021_data/202111-divvy-tripdata.csv")
+Cyclistic_202112_data <- read_csv("CS_2020_2021_data/202112-divvy-tripdata.csv")
+Cyclistic_202201_data <- read_csv("CS_2020_2021_data/202201-divvy-tripdata.csv")
+Cyclistic_202202_data <- read_csv("CS_2020_2021_data/202202-divvy-tripdata.csv")
+Cyclistic_202203_data <- read_csv("CS_2020_2021_data/202203-divvy-tripdata.csv")
+Cyclistic_202204_data <- read_csv("CS_2020_2021_data/202204-divvy-tripdata.csv")
+Cyclistic_202205_data <- read_csv("CS_2020_2021_data/202205-divvy-tripdata.csv")
+Cyclistic_202206_data <- read_csv("CS_2020_2021_data/202206-divvy-tripdata.csv")
+Cyclistic_202207_data <- read_csv("CS_2020_2021_data/202207-divvy-tripdata.csv")
+Cyclistic_202208_data <- read_csv("CS_2020_2021_data/202208-divvy-tripdata.csv")
+```
+
+I want to make sure the column names are similar in headers and format from the different datasets so I can then combine them together into one table. As well as get a better idea of what sort of information is collected within the dataset. 
+
+```{r Column Check, warning=FALSE}
+colnames(Cyclistic_202108_data)
+colnames(Cyclistic_202109_data)
+colnames(Cyclistic_202110_data)
+colnames(Cyclistic_202111_data)
+colnames(Cyclistic_202112_data)
+colnames(Cyclistic_202201_data)
+colnames(Cyclistic_202202_data)
+colnames(Cyclistic_202203_data)
+colnames(Cyclistic_202204_data)
+colnames(Cyclistic_202205_data)
+colnames(Cyclistic_202206_data)
+colnames(Cyclistic_202207_data)
+colnames(Cyclistic_202208_data)
+```
+
+All column names appear to be the same in all datasets so I can proceed with merging into one table to continue my cleaning. 
+
+```{r Merging Tables}
+# I have used the rbind function to combine the data together as all datasets have the same variables.
+Cyclistic_Alldata <- rbind(Cyclistic_202108_data,Cyclistic_202109_data,Cyclistic_202110_data,Cyclistic_202111_data,Cyclistic_202112_data,Cyclistic_202201_data,Cyclistic_202202_data,Cyclistic_202203_data,Cyclistic_202204_data,Cyclistic_202205_data,Cyclistic_202206_data,Cyclistic_202207_data,Cyclistic_202208_data)
+```
+
+## Processing the data
+
+I am now going to proceed with processing the data. I'll start by cleaning any potential duplicate ride_id values that might exist in my data. 
+
+```{r removing duplicates}
+Cyclistic_Alldata %>% distinct(ride_id, .keep_all = TRUE)
+head(Cyclistic_Alldata)
+```
+
+I am going to create a new column that will be the total length of time (in seconds) that a ride was for. This new column will be called "ride_seconds". 
+
+```{r adding ride_Length}
+Cyclistic_Alldata <- mutate(Cyclistic_Alldata, ride_seconds=difftime(ended_at,started_at), units="secs")
+Cyclistic_Alldata$ride_seconds<-as.numeric(Cyclistic_Alldata$ride_seconds)
+```
+
+I will now check the data to make sure there are no ride lengths that are less then zero seconds.
+
+```{r checking time}
+AllCyclistic <- filter(Cyclistic_Alldata, Cyclistic_Alldata$ride_seconds > 0)
+
+#I will also create a new column for rides length (time) in minutes.
+AllCyclistic <- AllCyclistic %>% 
+  mutate(ride_mins = as.numeric(AllCyclistic$ride_seconds) /60)
+```
+
+```{r Comparing the dataframes}
+#I want to compare the two dataframes to see what the difference between them and how many objects were removed. 
+summary(AllCyclistic)
+summary(Cyclistic_Alldata)
+#A total of 713 values were removed that were negative trip time.
+```
+
+I am also going to want to create a columns for day, month, and year and then calculate the day of the week rides took place on. 
+
+```{r Creating date colums}
+#day column
+AllCyclistic$day <- format(as.Date(AllCyclistic$started_at), "%d")
+#month column
+AllCyclistic$month <- format(as.Date(AllCyclistic$started_at), "%m")
+#year column
+AllCyclistic$year <- format(as.Date(AllCyclistic$started_at), "%Y")
+#day of the week
+AllCyclistic$day_of_week <- format(as.Date(AllCyclistic$started_at), "%A")
+
+#To clean up my table a bit I will combine the month and year
+AllCyclistic <- AllCyclistic %>% 
+  unite("MonthYear", month:year)
+```
+
+I am going to do a bit more housekeeping on the data, before I proceed to analyzing the information. There appears to be a lot of N/A values in the data I have. I will filter all the values so I have only complete data. There are also some columns I am not interested in that I want to remove to make my data easier to process. I also will make two more sets of data, one for Casual riders and one for Member only riders 
+
+```{r Removnig NA values}
+CCData <- drop_na(AllCyclistic)
+
+#I will remove columns for "lat" and "lng" values which I will not need for my analysis. 
+CCData <- subset(CCData, select = -c(start_lat,start_lng,end_lat,end_lng,ride_id,units,start_station_id,end_station_id))
+summary(CCData)
+
+#Going to create two data frame sets, one with only Casual and one with only Members
+CasualOnly <- filter(CCData, CCData$member_casual == "casual")
+MemberOnly <- filter(CCData, CCData$member_casual == "member")
+```
+
+## Analyze 
+
+Lets look into the data and see what sort of information we can find about the riders (casual and members), and see if we can start to get a bigger picture of what the data is telling us.
+
+```{r some calculations}
+#Calculating mean of ride time (mins)
+mean(CCData$ride_mins)
+#Calculating mean of Casual riders only
+mean(CasualOnly$ride_mins)
+#Calculating mean of Member riders only
+mean(MemberOnly$ride_mins)
+
+#Calculating max time of a ride (mins)
+max(CCData$ride_mins)
+#Max ride time for a Casual riders only
+max(CasualOnly$ride_mins)
+#Max ride time for Member riders only
+max(MemberOnly$ride_mins)
+
+# Creating a function for calculating "mode" {https://www.tutorialspoint.com/r/r_mean_median_mode.htm}
+getmode <- function(v) {
+   uniqv <- unique(v)
+   uniqv[which.max(tabulate(match(v, uniqv)))]}
+getmode(CCData$day_of_week)
+
+#using the previous function for mode, lets see what is also the most started at location for all data, casual, and member riders. 
+getmode(CCData$start_station_name)
+getmode(CasualOnly$start_station_name)
+getmode(MemberOnly$start_station_name)
+```
+I will now export my data so I can use Tableau to better visualize and analyze my data. 
+
+```{r exporting my data, echo=TRUE}
+write_csv(CCData,"C:\\Users\\bdese\\OneDrive\\Documents\\Case Study\\RMD_CaseStudy\\Cyclistic.csv")
+```
+
